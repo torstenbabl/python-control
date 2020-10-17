@@ -76,7 +76,7 @@ _rlocus_defaults = {
 # Main function: compute a root locus diagram
 def root_locus(sys, kvect=None, xlim=None, ylim=None,
                plotstr=None, plot=True, print_gain=None, grid=None, ax=None,
-               **kwargs):
+               zeta=None, linewidth=None, **kwargs):
 
     """Root locus plot
 
@@ -199,7 +199,7 @@ def root_locus(sys, kvect=None, xlim=None, ylim=None,
         # zoom update on xlim/ylim changed, only then data on new limits
         # is available, i.e., cannot combine with _RLClickDispatcher
         dpfun = partial(
-            _RLZoomDispatcher, sys=sys, ax_rlocus=ax, plotstr=plotstr)
+            _RLZoomDispatcher, sys=sys, ax_rlocus=ax, plotstr=plotstr, linewidth=linewidth)
         # TODO: the next too lines seem to take a long time to execute
         # TODO: is there a way to speed them up?  (RMM, 6 Jun 2019)
         ax.callbacks.connect('xlim_changed', dpfun)
@@ -216,7 +216,7 @@ def root_locus(sys, kvect=None, xlim=None, ylim=None,
 
         # Now plot the loci
         for index, col in enumerate(mymat.T):
-            ax.plot(real(col), imag(col), plotstr, label='rootlocus')
+            ax.plot(real(col), imag(col), plotstr, label='rootlocus', linewidth=linewidth)
 
         # Set up plot axes and labels
         ax.set_xlabel('Real')
@@ -226,12 +226,12 @@ def root_locus(sys, kvect=None, xlim=None, ylim=None,
             if isdtime(sys, strict=True):
                 zgrid(ax=ax)
             else:
-                _sgrid_func(f)
+                _sgrid_func(ax)
         elif grid:
             if isdtime(sys, strict=True):
                 zgrid(ax=ax)
             else:
-                _sgrid_func()
+                _sgrid_func(ax=ax, zeta=zeta)
         else:
             ax.axhline(0., linestyle=':', color='k', zorder=-20)
             ax.axvline(0., linestyle=':', color='k', zorder=-20)
@@ -535,7 +535,7 @@ def _RLSortRoots(mymat):
     return sorted
 
 
-def _RLZoomDispatcher(event, sys, ax_rlocus, plotstr):
+def _RLZoomDispatcher(event, sys, ax_rlocus, plotstr, linewidth=None):
     """Rootlocus plot zoom dispatcher"""
 
     nump, denp = _systopoly1d(sys)
@@ -546,7 +546,7 @@ def _RLZoomDispatcher(event, sys, ax_rlocus, plotstr):
     _removeLine('rootlocus', ax_rlocus)
 
     for i, col in enumerate(mymat.T):
-        ax_rlocus.plot(real(col), imag(col), plotstr, label='rootlocus',
+        ax_rlocus.plot(real(col), imag(col), plotstr, label='rootlocus', linewidth=linewidth,
                        scalex=False, scaley=False)
 
 
@@ -636,12 +636,13 @@ def _removeLine(label, ax):
             del line
 
 
-def _sgrid_func(fig=None, zeta=None, wn=None):
+def _sgrid_func(fig=None, ax=None, zeta=None, wn=None):
     if fig is None:
         fig = plt.gcf()
         ax = fig.gca()
-    else:
+    elif ax is None:
         ax = fig.axes[1]
+
     xlocator = ax.get_xaxis().get_major_locator()
 
     ylim = ax.get_ylim()
@@ -683,7 +684,7 @@ def _sgrid_func(fig=None, zeta=None, wn=None):
     ax.plot([0, 0], [ylim[0], ylim[1]],
             color='gray', linestyle='dashed', linewidth=0.5)
 
-    angles = np.linspace(-90, 90, 20)*np.pi/180
+    angles = np.linspace(-90, 90, 200)*np.pi/180
     if wn is None:
         wn = _default_wn(xlocator(), ylim)
 
